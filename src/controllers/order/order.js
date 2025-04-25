@@ -102,6 +102,14 @@ export const updateOrderStatus = async (req, reply) => {
     if (order.deliveryPartner.toString !== userId) {
       return reply.status(403).send({ message: "Unauthorized" });
     }
+
+    order.status = status;
+    order.deliveryPersonLocation = deliverPersonLocation;
+    await order.save();
+    req.server.io.yo(orderId).emit("liveTrackingUpdates", order);
+      return reply.send(order);
+      
+      
   } catch (error) {
     return reply
       .status(500)
