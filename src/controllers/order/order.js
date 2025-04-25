@@ -1,0 +1,110 @@
+import {
+  Customer,
+  Branch,
+  Order,
+  DeliveryPartner,
+} from "../../models/index.js";
+
+export const createOrder = async (req, reply) => {
+  try {
+    const { userId } = req.user;
+    const { items, branch, totalPrice } = req.body;
+
+    const customerData = await Customer.findById(userId);
+    const branchData = await Branch.findById(branch);
+
+    if (!customerData) {
+      return reply.status(400).send({ message: "Customer not found" });
+    }
+
+    const newOrder = new Order({
+      customer: userId,
+      items: items.map((item) => ({
+        id: item.id,
+        item: item.item,
+        count: item.count,
+      })),
+      branch,
+      totalPrice,
+      deliveryLocation: {
+        latitude: customerData.liveLocation.latitude,
+        longitude: customerData.liveLocation.longitude,
+        address: customerData.address || "No address available",
+      },
+      pickupLocation: {
+        latitude: branchData.location.latitude,
+        longitude: branchData.location.longitude,
+        address: branchData.address || "No address available",
+      },
+    });
+
+    const savedOrder = await newOrder.save();
+    return reply.status(201).send(savedOrder);
+  } catch (error) {
+    console.log(error);
+    return reply.status(500).send({ message: "Failed to create order", error });
+  }
+};
+
+export const confirmOrder = async (req, reply) => {
+  try {
+    const { orderId } = req.params;
+    const { userId } = req.user;
+    const { deliverPersonLocation } = req.body;
+
+    const deliveryPerson = await DeliveryPartner.findById(userId);
+    if (!deliveryPerson) {
+      return reply.status(404).send({ message: "Delivery Person not found" });
+    }
+
+    const order = await Order.findById(orderId);
+
+    if (!order) return reply.status(404).send({ message: "Order not found" });
+
+    if (order.status !== "available") {
+      return reply.status(400).send({ message: "Order is not available" });
+    }
+    order.status = "confirmed";
+    order.deliveryPartner = userId;
+    order.deliveryPersonLocation = {
+      latitude: deliverPersonLocation?.latitude,
+      longitude: deliverPersonLocation?.longitude,
+      address: deliverPersonLocation.address || "",
+    };
+
+    req.server.io.to(orderId).emit("orderConfirmed");
+    await order.save();
+
+    return reply.send(order);
+  } catch (error) {
+    return reply
+      .status(500)
+      .send({ message: "Failed to confirm order", error });
+  }
+};
+
+export const updateOrderStatus = async (req, reply) => {
+  try {
+    const { orderId } = req.params;
+    const { status, deliverPersonLocation } = req.body;
+    const { userId } = req.user;
+
+    const deliveryPerson = await DeliveryPartner.findById(userId);
+    if (!deliveryPerson) {
+      return reply.status(404).send({ message: "Delivery Person not found" });
+    }
+    const order = await Order.findById(orderId);
+    if (!order) return reply.status(404).send({ message: "Order not found" });
+
+    if (["cancelled", "delivered"].includes(order.status)) {
+      return reply.status(400).send({ message: "Order cannot be updated" });
+    }
+    if (order.deliveryPartner.toString !== userId) {
+      return reply.status(403).send({ message: "Unauthorized" });
+    }
+  } catch (error) {
+    return reply
+      .status(500)
+      .send({ message: "Failed to update order status", error });
+  }
+};
