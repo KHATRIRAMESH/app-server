@@ -1,4 +1,4 @@
-import mongoose, { mongo } from "mongoose";
+import mongoose from "mongoose";
 
 //Base user schema
 const userSchema = new mongoose.Schema({
@@ -12,7 +12,7 @@ const userSchema = new mongoose.Schema({
 });
 
 //Customer Schema
-const customerSchema = new mongoose({
+const customerSchema = new mongoose.Schema({
   ...userSchema.obj,
   phone: {
     type: Number,
@@ -54,7 +54,7 @@ const adminSchema = new mongoose.Schema({
   ...userSchema.obj,
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  role: { type: Stringe, enum: ["Admin"], default: "Admin" },
+  role: { type: String, enum: ["Admin"], default: "Admin" },
 });
 
 export const Customer = mongoose.model("Customer", customerSchema);

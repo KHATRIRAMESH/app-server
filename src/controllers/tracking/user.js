@@ -26,13 +26,13 @@ export const updateUser = async (req, reply) => {
       { $set: updateData },
       { new: true, runValidators: true }
     );
-    if (!updateUser) {
+    if (!updatedUser) {
       return reply.status(404).send({ message: "User not found" });
     }
 
     return reply.send({
       message: "User updated successfully",
-      user: updateUser,
+      user: updatedUser,
     });
       
   } catch (error) {

@@ -107,12 +107,52 @@ export const updateOrderStatus = async (req, reply) => {
     order.deliveryPersonLocation = deliverPersonLocation;
     await order.save();
     req.server.io.yo(orderId).emit("liveTrackingUpdates", order);
-      return reply.send(order);
-      
-      
+    return reply.send(order);
   } catch (error) {
     return reply
       .status(500)
       .send({ message: "Failed to update order status", error });
+  }
+};
+
+export const getOrders = async (req, reply) => {
+  try {
+    const { status, customerId, deliveryPartnerId, branchId } = req.query;
+    let query = {};
+    if (status) {
+      query.status = status;
+    }
+    if (customerId) {
+      query.customer = customerId;
+    }
+    if (deliveryPartnerId) {
+      query.deliveryPartner = deliveryPartnerId;
+      query.branch = branchId;
+    }
+    const orders = await Order.find(query).populate(
+      "customer branch items.item deliveryPartner"
+    );
+    return reply.send(orders);
+  } catch (error) {
+    return reply
+      .status(500)
+      .send({ message: "Failed to retrieve orders", error });
+  }
+};
+
+export const getOrderById = async (req, reply) => {
+  try {
+    const { orderId } = req.params;
+    const order = await Order.findById(
+      orderId.populate("customer branch items.item deliveryPartner")
+    );
+    if (!order) {
+      return reply.status(404).send({ message: "Order not found" });
+    }
+    return reply.send(order);
+  } catch (error) {
+    return reply
+      .status(500)
+      .send({ message: "Failed to retrieve order", error });
   }
 };

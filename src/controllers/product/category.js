@@ -1,6 +1,6 @@
-import { Category } from "../../models/category.js";
+import Category  from "../../models/category.js";
 
-export const gelAllCategories = async (req, reply) => {
+export const getAllCategories = async (req, reply) => {
   try {
     const categories = await Category.find();
     return reply.send(categories);
